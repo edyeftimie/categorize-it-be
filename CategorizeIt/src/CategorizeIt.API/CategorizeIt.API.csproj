@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AllowMissingPrunePackageData>true</AllowMissingPrunePackageData>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>6d300cec-ded1-40b9-9603-d36535febbeb</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.4" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.7" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CategorizeIt.Application\CategorizeIt.Application.csproj" />
+    <ProjectReference Include="..\CategorizeIt.Infrastructure\CategorizeIt.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
