@@ -1,4 +1,6 @@
 using CategorizeIt.Domain.Enums;
+using CategorizeIt.Domain.Entities;
+using CategorizeIt.Domain.Constants;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -12,12 +14,12 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.Property(e => e.Email)
             .IsRequired()
-            .HasMaxLength(256);
+            .HasMaxLength(AppConstants.Validation.EmailMaxLength);
 
         builder.Property(e => e.Role)
             .HasConversion<string>();
 
         builder.Property(e => e.Username)
-            .HasMaxLength(100);
+            .HasMaxLength(AppConstants.Validation.NameMaxLength);
     }
 }

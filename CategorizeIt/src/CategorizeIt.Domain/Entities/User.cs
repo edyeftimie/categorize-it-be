@@ -1,6 +1,6 @@
 using CategorizeIt.Domain.Enums;
 
-namespace CategorizeIt.Domain.Enums;
+namespace CategorizeIt.Domain.Entities;
 
 public class User
 {

@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 
+using CategorizeIt.Domain.Entities;
+
 namespace CategorizeIt.Infrastructure.Data;
 
 public class ApplicationDbContext : DbContext
@@ -8,6 +10,8 @@ public class ApplicationDbContext : DbContext
         : base(options)
     {
     }
+
+    public DbSet<User> Users => Set<User>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
