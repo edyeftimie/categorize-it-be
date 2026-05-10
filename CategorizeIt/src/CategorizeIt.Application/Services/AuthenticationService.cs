@@ -1,14 +1,20 @@
 using System.Data.Common;
 using System.Security.Claims;
+using System.Text;
+using System.IdentityModel.Tokens.Jwt;
+using System.Runtime.CompilerServices;
+using System.Runtime.Serialization;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+
+using Google.Apis.Auth;
+
 using CategorizeIt.Application.Interfaces;
 using CategorizeIt.Application.Services;
 using CategorizeIt.Application.Settings;
 using CategorizeIt.Application.Models.Authentication;
 using CategorizeIt.Domain.Entities;
-using System.IdentityModel.Tokens.Jwt;
-using System.Text;
-using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
+using CategorizeIt.Domain.Enums;
 
 namespace CategorizeIt.Application.Services;
 
@@ -16,11 +22,13 @@ public class AuthenticationService : IAuthenticationService
 {
     private readonly IUserRepository _userRepository;
     private readonly JwtSettings _jwtSettings;
+    private readonly GoogleAuthSettings _googleAuthSettings;
 
-    public AuthenticationService(IUserRepository userRepository, IOptions<JwtSettings> jwtSettings)
+    public AuthenticationService(IUserRepository userRepository, IOptions<JwtSettings> jwtSettings, IOptions<GoogleAuthSettings> googleAuthSettings)
     {
         _userRepository = userRepository;
         _jwtSettings = jwtSettings.Value;
+        _googleAuthSettings = googleAuthSettings.Value;
     }
 
     public async Task<AuthenticationResponse> LoginAsync(LoginRequest request)
@@ -53,6 +61,45 @@ public class AuthenticationService : IAuthenticationService
         };
 
         await _userRepository.CreateUserAsync(user);
+
+        return GenerateAuthenticationResponse(user);
+    }
+
+    public async Task<AuthenticationResponse> GoogleLoginAsync(GoogleLoginRequest request)
+    {
+        GoogleJsonWebSignature.Payload payload;
+        try
+        {
+            payload = await GoogleJsonWebSignature.ValidateAsync(request.IdToken, new GoogleJsonWebSignature.ValidationSettings
+            {
+                Audience = new[] { _googleAuthSettings.ClientId }
+            });
+        }
+        catch (Exception ex)
+        {
+            throw new Exception("Invalid Google ID token.", ex);
+        }
+
+        var user = await _userRepository.GetUserByEmailAsync(payload.Email);
+
+        if (user == null)
+        {
+            user = new User
+            {
+                Id = Guid.NewGuid(),
+                Email = payload.Email,
+                Username = payload.Name ?? payload.Email.Split('@')[0],
+                GoogleId = payload.Subject,
+                Role = Role.User
+            };
+
+            await _userRepository.CreateUserAsync(user);
+        } 
+        else if (user.GoogleId == null)
+        {
+            user.GoogleId = payload.Subject;
+            await _userRepository.UpdateUserAsync(user);
+        }
 
         return GenerateAuthenticationResponse(user);
     }
