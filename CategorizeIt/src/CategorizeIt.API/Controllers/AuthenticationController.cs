@@ -42,4 +42,18 @@ public class AuthenticationController : ControllerBase
             return BadRequest(ex.Message);
         }
     }
+    
+    [HttpPost("google-login")]
+    public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginRequest request)
+    {
+        try
+        {
+            var response = await _authenticationService.GoogleLoginAsync(request);
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
 }
