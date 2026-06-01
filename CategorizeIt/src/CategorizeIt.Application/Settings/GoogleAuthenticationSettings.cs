@@ -1,6 +1,6 @@
 namespace CategorizeIt.Application.Settings;
 
-public class GoogleAuthSettings
+public class GoogleAuthenticationSettings
 {
     public string ClientId { get; set; } = null!;
 }
