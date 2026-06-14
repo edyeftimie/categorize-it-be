@@ -10,4 +10,5 @@ public interface IBudgetRepository
     Task CreateAsync(Budget budget);
     Task UpdateAsync(Budget budget);
     Task DeleteAsync(Budget budget);
+    Task<bool> ExistsAsync(Guid userId, Guid categoryId);
 }

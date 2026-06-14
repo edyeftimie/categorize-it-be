@@ -52,4 +52,10 @@ public class BudgetRepository : IBudgetRepository
         _context.Budgets.Remove(budget);
         await _context.SaveChangesAsync();
     }
+
+    public async Task<bool> ExistsAsync(Guid userId, Guid categoryId)
+    {
+        return await _context.Budgets
+            .AnyAsync(b => b.UserId == userId && b.CategoryId == categoryId);
+    }
 }
