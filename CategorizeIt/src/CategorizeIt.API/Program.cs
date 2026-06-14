@@ -37,6 +37,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 builder.Services.AddScoped<IGoogleAuthenticationProvider, GoogleAuthenticationProvider>();
+builder.Services.AddScoped<IBankConnectionRepository, BankConnectionRepository>();
+builder.Services.AddScoped<IBankAccountRepository, BankAccountRepository>();
+builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
+builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
+builder.Services.AddScoped<IBudgetRepository, BudgetRepository>();
+builder.Services.AddScoped<IRecommendationRepository, RecommendationRepository>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
