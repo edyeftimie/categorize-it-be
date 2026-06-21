@@ -1,10 +1,12 @@
 using CategorizeIt.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CategorizeIt.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class RecommendationsController : ControllerBase
 {
     private readonly IRecommendationService _service;
