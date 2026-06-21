@@ -13,10 +13,19 @@ namespace CategorizeIt.API.Controllers;
 public class TransactionsController : ControllerBase
 {
     private readonly ITransactionRepository _transactions;
+    private readonly ITransactionSyncService _transactionSyncService;
 
-    public TransactionsController(ITransactionRepository transactions)
+    public TransactionsController(ITransactionRepository transactions, ITransactionSyncService transactionSyncService)
     {
         _transactions = transactions;
+        _transactionSyncService = transactionSyncService;
+    }
+
+    [HttpPost("sync")]
+    public async Task<IActionResult> Sync([FromQuery] Guid userId, CancellationToken ct)
+    {
+        var count = await _transactionSyncService.SyncAllForUserAsync(userId, ct);
+        return Ok(new { newTransactions = count });
     }
 
     [HttpGet]

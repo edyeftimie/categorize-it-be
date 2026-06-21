@@ -29,7 +29,6 @@ public class CategoriesController : ControllerBase
             Icon = c.Icon,
             Color = c.Color,
             IsSystem = c.IsSystem,
-            NeedWantType = c.NeedWantType
         });
 
         return Ok(result);
