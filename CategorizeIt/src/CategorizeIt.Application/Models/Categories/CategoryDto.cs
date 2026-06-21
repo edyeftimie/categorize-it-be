@@ -9,5 +9,4 @@ public class CategoryDto
     public string? Icon { get; set; }
     public string? Color { get; set; }
     public bool IsSystem { get; set; }
-    public NeedWantSavings NeedWantType { get; set; }
 }

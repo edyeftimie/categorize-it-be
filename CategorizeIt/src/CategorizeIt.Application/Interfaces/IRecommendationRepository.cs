@@ -9,4 +9,7 @@ public interface IRecommendationRepository
     Task CreateRangeAsync(IEnumerable<Recommendation> recommendations);
     Task UpdateAsync(Recommendation recommendation);
     Task DeleteAllForUserAsync(Guid userId);
+    Task<List<Recommendation>> GetByUserIdAndMonthAsync(Guid userId, int month, int year);
+Task UpdateRangeAsync(IEnumerable<Recommendation> recommendations);
+Task DeleteRangeAsync(IEnumerable<Recommendation> recommendations);
 }

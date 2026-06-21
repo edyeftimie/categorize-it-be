@@ -21,7 +21,7 @@ public class CategoryConfiguration : IEntityTypeConfiguration<Category>
             .HasMaxLength(7);
 
         builder.HasData(
-            new Category { Id = new Guid("00000000-0000-0000-0000-000000000001"), Name = "Food & Dining",         Icon = "restaurant",     Color = "#F59E0B", IsSystem = true, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new Category { Id = new Guid("00000000-0000-0000-0000-000000000001"), Name = "Food & Dining",         Icon = "restaurant",      Color = "#F59E0B", IsSystem = true, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
             new Category { Id = new Guid("00000000-0000-0000-0000-000000000002"), Name = "Transport",             Icon = "directions_car",  Color = "#3B82F6", IsSystem = true, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
             new Category { Id = new Guid("00000000-0000-0000-0000-000000000003"), Name = "Housing & Utilities",   Icon = "home",            Color = "#8B5CF6", IsSystem = true, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
             new Category { Id = new Guid("00000000-0000-0000-0000-000000000004"), Name = "Shopping",              Icon = "shopping_bag",    Color = "#EC4899", IsSystem = true, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },

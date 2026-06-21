@@ -125,4 +125,27 @@ public class TransactionRepository : ITransactionRepository
             .ToListAsync()
             .ContinueWith(t => t.Result.Select(x => (x.Month, x.Year, x.Total)).ToList());
     }
+    
+    public async Task<HashSet<string>> GetEntryReferencesByBankAccountAsync(Guid bankAccountId)
+    {
+        var refs = await _context.Transactions
+            .Where(t => t.BankAccountId == bankAccountId && t.EntryReference != null)
+            .Select(t => t.EntryReference!)
+            .ToListAsync();
+        return refs.ToHashSet();
+    }
+
+    public async Task AddRangeAsync(IEnumerable<Transaction> transactions)
+    {
+        _context.Transactions.AddRange(transactions);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task<List<Transaction>> GetExpensesForMonthAsync(Guid userId, int month, int year)
+    {
+        return await _context.Transactions
+            .Where(t => t.UserId == userId && t.IsExpense &&
+                        t.BookingDate.Month == month && t.BookingDate.Year == year)
+            .ToListAsync();
+    }
 }

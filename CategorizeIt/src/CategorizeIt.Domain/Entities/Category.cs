@@ -10,7 +10,6 @@ public class Category
     public string? Color { get; set; }
     public bool IsSystem { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public NeedWantSavings NeedWantType { get; set; } = NeedWantSavings.Uncategorised;
 
     public ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
     public ICollection<Budget> Budgets { get; set; } = new List<Budget>();

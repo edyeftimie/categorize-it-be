@@ -61,4 +61,26 @@ public class RecommendationRepository : IRecommendationRepository
         _context.Recommendations.RemoveRange(recommendations);
         await _context.SaveChangesAsync();
     }
+
+    public async Task<List<Recommendation>> GetByUserIdAndMonthAsync(Guid userId, int month, int year)
+    {
+        return await _context.Recommendations
+            .Include(r => r.Category)
+            .Where(r => r.UserId == userId
+                    && r.CreatedAt.Month == month
+                    && r.CreatedAt.Year == year)
+            .ToListAsync();
+    }
+
+    public async Task UpdateRangeAsync(IEnumerable<Recommendation> recommendations)
+    {
+        _context.Recommendations.UpdateRange(recommendations);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task DeleteRangeAsync(IEnumerable<Recommendation> recommendations)
+    {
+        _context.Recommendations.RemoveRange(recommendations);
+        await _context.SaveChangesAsync();
+    }
 }

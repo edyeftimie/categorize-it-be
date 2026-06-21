@@ -29,7 +29,7 @@ public class BankAccountConfiguration : IEntityTypeConfiguration<BankAccount>
 
         builder.Property(e => e.IdentificationHash)
             .IsRequired()
-            .HasMaxLength(64);
+            .HasMaxLength(512);
 
         builder.HasIndex(e => e.IdentificationHash)
             .IsUnique();

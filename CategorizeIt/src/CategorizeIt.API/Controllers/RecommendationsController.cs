@@ -1,43 +1,57 @@
-using System.Security.Claims;
 using CategorizeIt.Application.Interfaces;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CategorizeIt.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
 public class RecommendationsController : ControllerBase
 {
-    private readonly IRecommendationService _recommendationService;
+    private readonly IRecommendationService _service;
 
-    public RecommendationsController(IRecommendationService recommendationService)
-    {
-        _recommendationService = recommendationService;
-    }
+    public RecommendationsController(IRecommendationService service)
+        => _service = service;
 
     [HttpGet]
-    public async Task<IActionResult> GetRecommendations()
+    public async Task<IActionResult> GetCurrentMonth(
+        [FromQuery] Guid userId,
+        [FromQuery] bool includeRead      = false,
+        [FromQuery] bool includeDismissed = false,
+        CancellationToken ct = default)
     {
-        var result = await _recommendationService.GetRecommendationsAsync(GetUserId());
+        var result = await _service.GetCurrentMonthAsync(userId, includeRead, includeDismissed);
         return Ok(result);
     }
 
-    [HttpPatch("{id}/read")]
-    public async Task<IActionResult> MarkAsRead(Guid id)
+    [HttpGet("unread-count")]
+    public async Task<IActionResult> GetUnreadCount(
+        [FromQuery] Guid userId,
+        CancellationToken ct = default)
     {
-        var found = await _recommendationService.MarkAsReadAsync(GetUserId(), id);
-        return found ? NoContent() : NotFound();
+        var count = await _service.GetUnreadCountAsync(userId);
+        return Ok(new { count });
     }
 
-    [HttpPatch("{id}/dismiss")]
-    public async Task<IActionResult> Dismiss(Guid id)
+    [HttpPost("generate")]
+    public async Task<IActionResult> Generate(
+        [FromQuery] Guid userId,
+        CancellationToken ct = default)
     {
-        var found = await _recommendationService.DismissAsync(GetUserId(), id);
-        return found ? NoContent() : NotFound();
+        await _service.GenerateForUserAsync(userId, null, ct);
+        return NoContent();
     }
 
-    private Guid GetUserId() =>
-        Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+    [HttpPatch("{id:guid}/read")]
+    public async Task<IActionResult> MarkAsRead(Guid id, [FromQuery] Guid userId, CancellationToken ct = default)
+    {
+        var ok = await _service.MarkAsReadAsync(userId, id);
+        return ok ? NoContent() : NotFound();
+    }
+
+    [HttpPatch("{id:guid}/dismiss")]
+    public async Task<IActionResult> Dismiss(Guid id, [FromQuery] Guid userId, CancellationToken ct = default)
+    {
+        var ok = await _service.DismissAsync(userId, id);
+        return ok ? NoContent() : NotFound();
+    }
 }

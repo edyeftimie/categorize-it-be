@@ -13,4 +13,7 @@ public interface ITransactionRepository
     Task<(decimal Income, decimal Expenses)> GetMonthlySummaryAsync(Guid userId, int month, int year);
     Task<decimal> GetAllTimeBalanceAsync(Guid userId);
     Task<List<(int Month, int Year, decimal Total)>> GetMonthlySeriesAsync(Guid userId, Guid categoryId, int months);
+    Task<HashSet<string>> GetEntryReferencesByBankAccountAsync(Guid bankAccountId);
+    Task AddRangeAsync(IEnumerable<Transaction> transactions);
+    Task<List<Transaction>> GetExpensesForMonthAsync(Guid userId, int month, int year);
 }
