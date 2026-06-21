@@ -1,134 +1,45 @@
 using CategorizeIt.Application.Interfaces;
-using CategorizeIt.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CategorizeIt.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/bank-connections")]
 public class BankConnectionsController : ControllerBase
 {
-    private readonly IEnableBankingClient _enableBanking;
-    private readonly IBankConnectionRepository _connections;
+    private readonly IBankConnectionService _bankConnectionService;
 
-    public BankConnectionsController(
-        IEnableBankingClient enableBanking,
-        IBankConnectionRepository connections)
+    public BankConnectionsController(IBankConnectionService bankConnectionService)
     {
-        _enableBanking = enableBanking;
-        _connections = connections;
+        _bankConnectionService = bankConnectionService;
     }
 
     [HttpPost("auth")]
-    public async Task<IActionResult> InitiateAuth(
-        [FromBody] InitiateAuthRequest request,
-        CancellationToken ct)
+    public async Task<IActionResult> InitiateAuth([FromBody] InitiateAuthRequest request, CancellationToken ct)
     {
-        var state = Guid.NewGuid().ToString("N");
-        var validUntil = DateTimeOffset.UtcNow.AddDays(90);
-
-        var result = await _enableBanking.StartAuthorizationAsync(
-            request.AspspName,
-            request.AspspCountry,
-            "http://localhost:3000/bank-callback",
-            state,
-            validUntil,
-            ct);
-
-        return Ok(new { url = result.Url, state });
+        var result = await _bankConnectionService.InitiateAuthAsync(request.AspspName, request.AspspCountry, ct);
+        return Ok(new { url = result.Url, state = result.State });
     }
 
     [HttpPost("callback")]
-    public async Task<IActionResult> Callback(
-        [FromBody] CallbackRequest request,
-        CancellationToken ct)
+    public async Task<IActionResult> Callback([FromBody] CallbackRequest request, CancellationToken ct)
     {
-        var session = await _enableBanking.CreateSessionAsync(request.Code, ct);
-
-        var connectionId = Guid.NewGuid();
-
-        var connection = new BankConnection
-        {
-            Id = connectionId,
-            UserId = request.UserId,
-            SessionId = session.SessionId,
-            AspspName = session.Aspsp.Name,
-            AspspCountry = session.Aspsp.Country,
-            PsuType = session.PsuType,
-            ValidUntil = DateTime.SpecifyKind(session.Access.ValidUntil, DateTimeKind.Utc),
-            Status = "AUTHORIZED",
-            CreatedAt = DateTime.UtcNow,
-            BankAccounts = session.Accounts.Select(a => new BankAccount
-            {
-                Id = Guid.NewGuid(),
-                BankConnectionId = connectionId,
-                Uid = a.Uid,
-                IdentificationHash = a.IdentificationHash,
-                Name = a.Name,
-                Currency = a.Currency,
-                CashAccountType = a.CashAccountType,
-                CreatedAt = DateTime.UtcNow
-            }).ToList()
-        };
-
-        await _connections.CreateAsync(connection);
-
-        return Ok(new
-        {
-            id = connection.Id,
-            aspspName = connection.AspspName,
-            aspspCountry = connection.AspspCountry,
-            status = connection.Status,
-            validUntil = connection.ValidUntil,
-            createdAt = connection.CreatedAt,
-            accounts = connection.BankAccounts.Select(a => new
-            {
-                id = a.Id,
-                uid = a.Uid,
-                name = a.Name,
-                currency = a.Currency,
-                cashAccountType = a.CashAccountType
-            })
-        });
+        var connection = await _bankConnectionService.HandleCallbackAsync(request.UserId, request.Code, ct);
+        return Ok(connection);
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetConnections(
-        [FromQuery] Guid userId,
-        CancellationToken ct)
+    public async Task<IActionResult> GetConnections([FromQuery] Guid userId, CancellationToken ct)
     {
-        var connections = await _connections.GetByUserIdAsync(userId);
-
-        return Ok(connections.Select(c => new
-        {
-            id = c.Id,
-            aspspName = c.AspspName,
-            aspspCountry = c.AspspCountry,
-            status = c.Status,
-            validUntil = c.ValidUntil,
-            createdAt = c.CreatedAt,
-            accounts = c.BankAccounts.Select(a => new
-            {
-                id = a.Id,
-                uid = a.Uid,
-                iban = a.Iban,
-                name = a.Name,
-                currency = a.Currency,
-                cashAccountType = a.CashAccountType,
-                lastSyncedAt = a.LastSyncedAt
-            })
-        }));
+        var connections = await _bankConnectionService.GetConnectionsAsync(userId);
+        return Ok(connections);
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
-        var connection = await _connections.GetByIdAsync(id);
-        if (connection == null)
-            return NotFound();
-
-        await _connections.DeleteAsync(connection);
-        return NoContent();
+        var found = await _bankConnectionService.DeleteConnectionAsync(id);
+        return found ? NoContent() : NotFound();
     }
 }
 

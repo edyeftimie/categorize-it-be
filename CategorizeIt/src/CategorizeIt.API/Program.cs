@@ -50,6 +50,11 @@ builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 builder.Services.AddScoped<ITransactionSyncService, TransactionSyncService>();
 builder.Services.AddScoped<IMccCategoriser, MccCategoriser>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<ITransactionService, TransactionService>();
+builder.Services.AddScoped<IBudgetService, BudgetService>();
+builder.Services.AddScoped<IRecommendationService, RecommendationService>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<IBankConnectionService, BankConnectionService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

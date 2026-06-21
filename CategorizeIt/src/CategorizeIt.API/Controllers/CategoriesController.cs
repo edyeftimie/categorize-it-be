@@ -1,5 +1,4 @@
 using CategorizeIt.Application.Interfaces;
-using CategorizeIt.Application.Models.Categories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,27 +9,17 @@ namespace CategorizeIt.API.Controllers;
 [Authorize]
 public class CategoriesController : ControllerBase
 {
-    private readonly ICategoryRepository _categories;
+    private readonly ICategoryService _categoryService;
 
-    public CategoriesController(ICategoryRepository categories)
+    public CategoriesController(ICategoryService categoryService)
     {
-        _categories = categories;
+        _categoryService = categoryService;
     }
 
     [HttpGet]
     public async Task<IActionResult> GetCategories()
     {
-        var categories = await _categories.GetAllAsync();
-
-        var result = categories.Select(c => new CategoryDto
-        {
-            Id = c.Id,
-            Name = c.Name,
-            Icon = c.Icon,
-            Color = c.Color,
-            IsSystem = c.IsSystem,
-        });
-
+        var result = await _categoryService.GetCategoriesAsync();
         return Ok(result);
     }
 }

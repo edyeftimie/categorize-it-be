@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using CategorizeIt.Application.Interfaces;
-using CategorizeIt.Application.Models.Recommendations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,63 +10,32 @@ namespace CategorizeIt.API.Controllers;
 [Authorize]
 public class RecommendationsController : ControllerBase
 {
-    private readonly IRecommendationRepository _recommendations;
+    private readonly IRecommendationService _recommendationService;
 
-    public RecommendationsController(IRecommendationRepository recommendations)
+    public RecommendationsController(IRecommendationService recommendationService)
     {
-        _recommendations = recommendations;
+        _recommendationService = recommendationService;
     }
 
     [HttpGet]
     public async Task<IActionResult> GetRecommendations()
     {
-        var userId = GetUserId();
-        var recommendations = await _recommendations.GetByUserIdAsync(userId);
-
-        var result = recommendations.Select(r => new RecommendationDto
-        {
-            Id = r.Id,
-            Type = r.Type,
-            Title = r.Title,
-            Description = r.Description,
-            CategoryId = r.CategoryId,
-            CategoryName = r.Category?.Name,
-            CategoryColor = r.Category?.Color,
-            Priority = r.Priority,
-            IsRead = r.IsRead,
-            IsDismissed = r.IsDismissed,
-            CreatedAt = r.CreatedAt
-        });
-
+        var result = await _recommendationService.GetRecommendationsAsync(GetUserId());
         return Ok(result);
     }
 
     [HttpPatch("{id}/read")]
     public async Task<IActionResult> MarkAsRead(Guid id)
     {
-        var userId = GetUserId();
-        var rec = await _recommendations.GetByIdAsync(id);
-
-        if (rec == null || rec.UserId != userId)
-            return NotFound();
-
-        rec.IsRead = true;
-        await _recommendations.UpdateAsync(rec);
-        return NoContent();
+        var found = await _recommendationService.MarkAsReadAsync(GetUserId(), id);
+        return found ? NoContent() : NotFound();
     }
 
     [HttpPatch("{id}/dismiss")]
     public async Task<IActionResult> Dismiss(Guid id)
     {
-        var userId = GetUserId();
-        var rec = await _recommendations.GetByIdAsync(id);
-
-        if (rec == null || rec.UserId != userId)
-            return NotFound();
-
-        rec.IsDismissed = true;
-        await _recommendations.UpdateAsync(rec);
-        return NoContent();
+        var found = await _recommendationService.DismissAsync(GetUserId(), id);
+        return found ? NoContent() : NotFound();
     }
 
     private Guid GetUserId() =>
