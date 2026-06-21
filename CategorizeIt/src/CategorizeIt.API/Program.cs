@@ -49,6 +49,7 @@ builder.Services.AddScoped<IRecommendationRepository, RecommendationRepository>(
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 builder.Services.AddScoped<ITransactionSyncService, TransactionSyncService>();
 builder.Services.AddScoped<IMccCategoriser, MccCategoriser>();
+builder.Services.AddScoped<IDashboardService, DashboardService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
