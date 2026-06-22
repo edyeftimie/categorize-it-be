@@ -7,11 +7,13 @@ namespace CategorizeIt.Application.Services;
 public class DashboardService : IDashboardService
 {
     private readonly ITransactionRepository _transactions;
+    private readonly IBudgetRepository _budgets;
     private readonly IMccCategoriser _mccCategoriser = new MccCategoriser();
 
-    public DashboardService(ITransactionRepository transactions, IMccCategoriser mccCategoriser)
+    public DashboardService(ITransactionRepository transactions, IBudgetRepository budgets, IMccCategoriser mccCategoriser)
     {
         _transactions = transactions;
+        _budgets = budgets;
         _mccCategoriser = mccCategoriser;
     }
 
@@ -20,9 +22,14 @@ public class DashboardService : IDashboardService
         var now = DateTime.UtcNow;
         var m = month ?? now.Month;
         var y = year ?? now.Year;
+
         var balance = await _transactions.GetAllTimeBalanceAsync(userId);
         var (income, expenses) = await _transactions.GetMonthlySummaryAsync(userId, m, y);
         var byCategory = await _transactions.GetExpensesByCategoryAsync(userId, m, y);
+        var budgets = await _budgets.GetByUserIdAsync(userId);
+
+        var budgetMap = budgets.ToDictionary(b => b.CategoryId, b => b.MonthlyLimit);
+
         var topCategories = byCategory.Select(c => new CategorySpendingDto
         {
             CategoryId = c.CategoryId,
@@ -30,7 +37,8 @@ public class DashboardService : IDashboardService
             CategoryColor = c.CategoryColor,
             CategoryIcon = c.CategoryIcon,
             Amount = c.Total,
-            Percentage = expenses > 0 ? Math.Round(c.Total / expenses * 100, 1) : 0
+            Percentage = expenses > 0 ? Math.Round(c.Total / expenses * 100, 1) : 0,
+            BudgetLimit = budgetMap.TryGetValue(c.CategoryId, out var limit) ? limit : null
         }).ToList();
 
         // Compute Need/Want/Savings split from each transaction's MCC

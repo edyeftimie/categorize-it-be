@@ -120,9 +120,12 @@ public class AuthenticationService : IAuthenticationService
         return new AuthenticationResponse
         {
             Token = new JwtSecurityTokenHandler().WriteToken(token),
-            Email = user.Email,
-            Role = user.Role.ToString(),
-            Expiration = expiration
+            User = new UserDto
+            {
+                Id = user.Id,
+                Email = user.Email,
+                Username = user.Username
+            }
         };
     }
 }

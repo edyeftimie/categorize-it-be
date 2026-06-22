@@ -8,6 +8,7 @@ public class CategorySpendingDto
     public string? CategoryIcon { get; set; }
     public decimal Amount { get; set; }
     public decimal Percentage { get; set; }
+    public decimal? BudgetLimit { get; set; }
 }
 
 public class NeedWantSplitDto
