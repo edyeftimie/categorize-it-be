@@ -69,9 +69,4 @@ public class TransactionService : ITransactionService
         await _transactions.UpdateAsync(transaction);
         return true;
     }
-
-    public Task<int> SyncAllForUserAsync(Guid userId, CancellationToken ct)
-    {
-        return _syncService.SyncAllForUserAsync(userId, ct);
-    }
 }

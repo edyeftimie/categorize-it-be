@@ -1,17 +1,21 @@
 using CategorizeIt.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CategorizeIt.API.Controllers;
 
 [ApiController]
 [Route("api/bank-connections")]
+[Authorize]
 public class BankConnectionsController : ControllerBase
 {
     private readonly IBankConnectionService _bankConnectionService;
+    private readonly IEnableBankingClient _enableBankingClient;
 
-    public BankConnectionsController(IBankConnectionService bankConnectionService)
+    public BankConnectionsController(IBankConnectionService bankConnectionService, IEnableBankingClient enableBankingClient)
     {
         _bankConnectionService = bankConnectionService;
+        _enableBankingClient = enableBankingClient;
     }
 
     [HttpPost("auth")]
