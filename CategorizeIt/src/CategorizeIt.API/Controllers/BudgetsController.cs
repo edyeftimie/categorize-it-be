@@ -21,28 +21,32 @@ public class BudgetsController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetBudgets()
     {
-        var result = await _budgetService.GetBudgetsAsync(GetUserId());
+        var userId = GetUserId();
+        var result = await _budgetService.GetBudgetsAsync(userId);
         return Ok(result);
     }
 
     [HttpPost]
     public async Task<IActionResult> CreateBudget([FromBody] CreateBudgetRequest request)
     {
-        var id = await _budgetService.CreateBudgetAsync(GetUserId(), request);
+        var userId = GetUserId();
+        var id = await _budgetService.CreateBudgetAsync(userId, request);
         return id.HasValue ? Ok(new { Id = id.Value }) : Conflict("A budget for this category already exists.");
     }
 
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateBudget(Guid id, [FromBody] UpdateBudgetRequest request)
     {
-        var found = await _budgetService.UpdateBudgetAsync(GetUserId(), id, request);
+        var userId = GetUserId();
+        var found = await _budgetService.UpdateBudgetAsync(userId, id, request);
         return found ? NoContent() : NotFound();
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteBudget(Guid id)
     {
-        var found = await _budgetService.DeleteBudgetAsync(GetUserId(), id);
+        var userId = GetUserId();
+        var found = await _budgetService.DeleteBudgetAsync(userId, id);
         return found ? NoContent() : NotFound();
     }
 

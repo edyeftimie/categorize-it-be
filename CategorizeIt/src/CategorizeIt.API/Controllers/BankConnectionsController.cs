@@ -1,6 +1,7 @@
-using CategorizeIt.Application.Interfaces;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using CategorizeIt.Application.Interfaces;
 
 namespace CategorizeIt.API.Controllers;
 
@@ -28,13 +29,15 @@ public class BankConnectionsController : ControllerBase
     [HttpPost("callback")]
     public async Task<IActionResult> Callback([FromBody] CallbackRequest request, CancellationToken ct)
     {
-        var connection = await _bankConnectionService.HandleCallbackAsync(request.UserId, request.Code, ct);
+        var userId = GetUserId();
+        var connection = await _bankConnectionService.HandleCallbackAsync(userId, request.Code, ct);
         return Ok(connection);
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetConnections([FromQuery] Guid userId, CancellationToken ct)
+    public async Task<IActionResult> GetConnections(CancellationToken ct)
     {
+        var userId = GetUserId();
         var connections = await _bankConnectionService.GetConnectionsAsync(userId);
         return Ok(connections);
     }
@@ -45,7 +48,10 @@ public class BankConnectionsController : ControllerBase
         var found = await _bankConnectionService.DeleteConnectionAsync(id);
         return found ? NoContent() : NotFound();
     }
+    
+    private Guid GetUserId() =>
+        Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 }
 
-public record InitiateAuthRequest(Guid UserId, string AspspName, string AspspCountry);
-public record CallbackRequest(Guid UserId, string Code);
+public record InitiateAuthRequest(string AspspName, string AspspCountry);
+public record CallbackRequest(string Code);

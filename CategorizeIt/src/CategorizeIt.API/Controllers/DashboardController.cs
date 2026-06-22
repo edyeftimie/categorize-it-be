@@ -20,14 +20,16 @@ public class DashboardController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetDashboard([FromQuery] int? month, [FromQuery] int? year)
     {
-        var dto = await _dashboard.GetDashboardAsync(GetUserId(), month, year);
+        var userId = GetUserId(); 
+        var dto = await _dashboard.GetDashboardAsync(userId, month, year);
         return Ok(dto);
     }
 
     [HttpGet("monthly-series/{categoryId}")]
     public async Task<IActionResult> GetMonthlySeries(Guid categoryId, [FromQuery] int months = 6)
     {
-        var result = await _dashboard.GetMonthlySeriesAsync(GetUserId(), categoryId, months);
+        var userId = GetUserId();
+        var result = await _dashboard.GetMonthlySeriesAsync(userId, categoryId, months);
         return Ok(result);
     }
 
