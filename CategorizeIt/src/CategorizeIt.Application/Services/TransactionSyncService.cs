@@ -2,6 +2,7 @@ using System.Globalization;
 using CategorizeIt.Application.Interfaces;
 using CategorizeIt.Application.Models.EnableBanking;
 using CategorizeIt.Domain.Entities;
+using Microsoft.Extensions.Logging;
 
 namespace CategorizeIt.Application.Services;
 
@@ -11,11 +12,11 @@ public class TransactionSyncService : ITransactionSyncService
     private readonly IBankAccountRepository _bankAccounts;
     private readonly IBankConnectionRepository _bankConnections;
     private readonly ITransactionRepository _transactions;
-    
     private readonly ICategoryRepository _categories;
     private readonly IMccCategoriser _mccCategoriser;
-
     private readonly IRecommendationService _recommendationService;
+    private readonly ILogger<TransactionSyncService> _logger;
+
 
     public TransactionSyncService(
         IEnableBankingClient enableBanking,
@@ -24,7 +25,9 @@ public class TransactionSyncService : ITransactionSyncService
         ITransactionRepository transactions,
         ICategoryRepository categories,
         IMccCategoriser mccCategorizer,
-        IRecommendationService recommendationService)
+        IRecommendationService recommendationService,
+        ILogger<TransactionSyncService> logger
+        )
     {
         _enableBanking = enableBanking;
         _bankAccounts = bankAccounts;
@@ -33,6 +36,7 @@ public class TransactionSyncService : ITransactionSyncService
         _categories = categories;
         _mccCategoriser = mccCategorizer;
         _recommendationService = recommendationService;
+        _logger = logger;
     }
 
     public async Task<int> SyncAccountAsync(Guid userId, Guid bankAccountId, CancellationToken ct = default)
@@ -136,7 +140,7 @@ public class TransactionSyncService : ITransactionSyncService
         }
         catch (Exception ex)
         {
-            //add later logging here
+            _logger.LogError(ex, "Failed to generate recommendations after syncing transactions for user {UserId}", userId);
         }
 
         return total;

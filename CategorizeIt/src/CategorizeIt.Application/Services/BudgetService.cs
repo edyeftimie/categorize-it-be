@@ -1,6 +1,7 @@
 using CategorizeIt.Application.Interfaces;
 using CategorizeIt.Application.Models.Budgets;
 using CategorizeIt.Domain.Entities;
+using Microsoft.Extensions.Logging;
 
 namespace CategorizeIt.Application.Services;
 
@@ -8,11 +9,15 @@ public class BudgetService : IBudgetService
 {
     private readonly IBudgetRepository _budgets;
     private readonly ITransactionRepository _transactions;
+    private readonly IRecommendationService _recommendations;
+    private readonly ILogger<BudgetService> _logger;
 
-    public BudgetService(IBudgetRepository budgets, ITransactionRepository transactions)
+    public BudgetService(IBudgetRepository budgets, ITransactionRepository transactions, IRecommendationService recommendations, ILogger<BudgetService> logger)
     {
-        _budgets = budgets;
-        _transactions = transactions;
+        _budgets         = budgets;
+        _transactions    = transactions;
+        _recommendations = recommendations;
+        _logger = logger;
     }
 
     public async Task<IEnumerable<BudgetDto>> GetBudgetsAsync(Guid userId)
@@ -26,14 +31,14 @@ public class BudgetService : IBudgetService
             var spent = expensesByCategory.FirstOrDefault(e => e.CategoryId == b.CategoryId).Total;
             return new BudgetDto
             {
-                Id = b.Id,
-                CategoryId = b.CategoryId,
-                CategoryName = b.Category.Name,
-                CategoryIcon = b.Category.Icon,
+                Id            = b.Id,
+                CategoryId    = b.CategoryId,
+                CategoryName  = b.Category.Name,
+                CategoryIcon  = b.Category.Icon,
                 CategoryColor = b.Category.Color,
-                MonthlyLimit = b.MonthlyLimit,
-                AmountSpent = spent,
-                Currency = b.Currency
+                MonthlyLimit  = b.MonthlyLimit,
+                AmountSpent   = spent,
+                Currency      = b.Currency
             };
         });
     }
@@ -45,14 +50,21 @@ public class BudgetService : IBudgetService
 
         var budget = new Budget
         {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            CategoryId = request.CategoryId,
+            Id           = Guid.NewGuid(),
+            UserId       = userId,
+            CategoryId   = request.CategoryId,
             MonthlyLimit = request.MonthlyLimit,
-            Currency = request.Currency
+            Currency     = request.Currency
         };
 
         await _budgets.CreateAsync(budget);
+
+        try { await _recommendations.GenerateForUserAsync(userId, null, default); }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to generate recommendations after creating budget for user {UserId}", userId);
+        }
+
         return budget.Id;
     }
 
@@ -62,8 +74,16 @@ public class BudgetService : IBudgetService
         if (budget == null || budget.UserId != userId)
             return false;
 
+        _logger.LogInformation("Updating budget {Id} MonthlyLimit to {Limit}", budgetId, request.MonthlyLimit);
         budget.MonthlyLimit = request.MonthlyLimit;
         await _budgets.UpdateAsync(budget);
+
+        try { await _recommendations.GenerateForUserAsync(userId, null, default); }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to generate recommendations after updating budget for user {UserId}", userId);
+        }
+
         return true;
     }
 
@@ -74,6 +94,13 @@ public class BudgetService : IBudgetService
             return false;
 
         await _budgets.DeleteAsync(budget);
+
+        try { await _recommendations.GenerateForUserAsync(userId, null, default); }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to generate recommendations after deleting budget for user {UserId}", userId);
+        }
+
         return true;
     }
 }
