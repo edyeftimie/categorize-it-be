@@ -33,7 +33,7 @@ public class BankConnectionsController : ControllerBase
         var result = await _enableBanking.StartAuthorizationAsync(
             request.AspspName,
             request.AspspCountry,
-            "http://localhost:3000/bank-callback",
+            "https://edyeftimie.github.io/categoriseit-callback/",
             state,
             validUntil,
             ct);
@@ -46,8 +46,86 @@ public class BankConnectionsController : ControllerBase
         [FromBody] CallbackRequest request,
         CancellationToken ct)
     {
-        var userId       = GetUserId();
-        var session      = await _enableBanking.CreateSessionAsync(request.Code, ct);
+        var userId  = GetUserId();
+        var session = await _enableBanking.CreateSessionAsync(request.Code, ct);
+
+        // Match existing accounts by IdentificationHash (STABLE across reconnects).
+        // Uid changes each session, so matching on Uid wrongly triggers CREATE and
+        // collides on the unique IdentificationHash constraint.
+        var incomingHashes   = session.Accounts
+            .Select(a => a.IdentificationHash)
+            .Where(h => h != null)
+            .ToList();
+        var existingAccounts = await _connections
+            .GetAccountsByIdentificationHashesForUserAsync(userId, incomingHashes);
+
+        if (existingAccounts.Count > 0)
+        {
+            // REACTIVATE existing connection in place
+            var existingConnection = existingAccounts[0].BankConnection;
+
+            existingConnection.SessionId    = session.SessionId;
+            existingConnection.AspspName    = session.Aspsp.Name;
+            existingConnection.AspspCountry = session.Aspsp.Country;
+            existingConnection.PsuType      = session.PsuType;
+            existingConnection.ValidUntil   = DateTime.SpecifyKind(session.Access.ValidUntil, DateTimeKind.Utc);
+            existingConnection.Status       = "AUTHORIZED";
+
+            var existingByHash = existingAccounts
+                .Where(a => a.IdentificationHash != null)
+                .ToDictionary(a => a.IdentificationHash!);
+
+            foreach (var incoming in session.Accounts)
+            {
+                if (incoming.IdentificationHash != null &&
+                    existingByHash.TryGetValue(incoming.IdentificationHash, out var existing))
+                {
+                    // Refresh metadata; Id and BankConnectionId stay unchanged.
+                    // Update the Uid too, since it changes per session.
+                    existing.Uid             = incoming.Uid;
+                    existing.Name            = incoming.Name;
+                    existing.Currency        = incoming.Currency;
+                    existing.CashAccountType = incoming.CashAccountType;
+                }
+                else
+                {
+                    // New account added since last connection
+                    existingConnection.BankAccounts.Add(new BankAccount
+                    {
+                        Id                 = Guid.NewGuid(),
+                        BankConnectionId   = existingConnection.Id,
+                        Uid                = incoming.Uid,
+                        IdentificationHash = incoming.IdentificationHash,
+                        Name               = incoming.Name,
+                        Currency           = incoming.Currency,
+                        CashAccountType    = incoming.CashAccountType,
+                        CreatedAt          = DateTime.UtcNow
+                    });
+                }
+            }
+
+            await _connections.UpdateAsync(existingConnection);
+
+            return Ok(new
+            {
+                id           = existingConnection.Id,
+                aspspName    = existingConnection.AspspName,
+                aspspCountry = existingConnection.AspspCountry,
+                status       = existingConnection.Status,
+                validUntil   = existingConnection.ValidUntil,
+                createdAt    = existingConnection.CreatedAt,
+                accounts     = existingConnection.BankAccounts.Select(a => new
+                {
+                    id              = a.Id,
+                    uid             = a.Uid,
+                    name            = a.Name,
+                    currency        = a.Currency,
+                    cashAccountType = a.CashAccountType
+                })
+            });
+        }
+
+        // CREATE path — no existing accounts matched, brand-new bank
         var connectionId = Guid.NewGuid();
 
         var connection = new BankConnection
@@ -122,7 +200,6 @@ public class BankConnectionsController : ControllerBase
         }));
     }
 
-    // ⚠ Ownership check added
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
@@ -132,7 +209,7 @@ public class BankConnectionsController : ControllerBase
         if (connection == null || connection.UserId != userId)
             return NotFound();
 
-        await _connections.DeleteAsync(connection);
+        await _connections.DeleteAsync(connection); // soft-deletes via Status = "DISCONNECTED"
         return NoContent();
     }
 
