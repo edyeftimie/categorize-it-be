@@ -9,6 +9,8 @@ public class BankConnectionService : IBankConnectionService
     private readonly IEnableBankingClient _enableBanking;
     private readonly IBankConnectionRepository _connections;
 
+    private const string RedirectUrl = "https://edyeftimie.github.io/categoriseit-callback/";
+
     public BankConnectionService(IEnableBankingClient enableBanking, IBankConnectionRepository connections)
     {
         _enableBanking = enableBanking;
@@ -19,12 +21,8 @@ public class BankConnectionService : IBankConnectionService
     {
         var state = Guid.NewGuid().ToString("N");
         var validUntil = DateTimeOffset.UtcNow.AddDays(90);
-
         var result = await _enableBanking.StartAuthorizationAsync(
-            aspspName, aspspCountry,
-            "http://localhost:3000/bank-callback",
-            state, validUntil, ct);
-
+            aspspName, aspspCountry, RedirectUrl, state, validUntil, ct);
         return new InitiateAuthResult(result.Url, state);
     }
 
@@ -32,32 +30,94 @@ public class BankConnectionService : IBankConnectionService
     {
         var session = await _enableBanking.CreateSessionAsync(code, ct);
 
-        var connectionId = Guid.NewGuid();
-        var connection = new BankConnection
-        {
-            Id = connectionId,
-            UserId = userId,
-            SessionId = session.SessionId,
-            AspspName = session.Aspsp.Name,
-            AspspCountry = session.Aspsp.Country,
-            PsuType = session.PsuType,
-            ValidUntil = DateTime.SpecifyKind(session.Access.ValidUntil, DateTimeKind.Utc),
-            Status = "AUTHORIZED",
-            CreatedAt = DateTime.UtcNow,
-            BankAccounts = session.Accounts.Select(a => new BankAccount
-            {
-                Id = Guid.NewGuid(),
-                BankConnectionId = connectionId,
-                Uid = a.Uid,
-                IdentificationHash = a.IdentificationHash,
-                Name = a.Name,
-                Currency = a.Currency,
-                CashAccountType = a.CashAccountType,
-                CreatedAt = DateTime.UtcNow
-            }).ToList()
-        };
+        // Match existing accounts by IdentificationHash (STABLE across reconnects).
+        // Uid changes each session, so matching on Uid wrongly triggers CREATE and
+        // collides on the unique IdentificationHash constraint.
+        var incomingHashes = session.Accounts
+            .Select(a => a.IdentificationHash)
+            .Where(h => h != null)
+            .ToList();
 
-        await _connections.CreateAsync(connection);
+        var existingAccounts = await _connections
+            .GetAccountsByIdentificationHashesForUserAsync(userId, incomingHashes);
+
+        BankConnection connection;
+
+        if (existingAccounts.Count > 0)
+        {
+            // REACTIVATE existing connection in place
+            connection = existingAccounts[0].BankConnection;
+
+            connection.SessionId    = session.SessionId;
+            connection.AspspName    = session.Aspsp.Name;
+            connection.AspspCountry = session.Aspsp.Country;
+            connection.PsuType      = session.PsuType;
+            connection.ValidUntil   = DateTime.SpecifyKind(session.Access.ValidUntil, DateTimeKind.Utc);
+            connection.Status       = "AUTHORIZED";
+
+            var existingByHash = existingAccounts
+                .Where(a => a.IdentificationHash != null)
+                .ToDictionary(a => a.IdentificationHash!);
+
+            foreach (var incoming in session.Accounts)
+            {
+                if (incoming.IdentificationHash != null &&
+                    existingByHash.TryGetValue(incoming.IdentificationHash, out var existing))
+                {
+                    existing.Uid             = incoming.Uid;
+                    existing.Name            = incoming.Name;
+                    existing.Currency        = incoming.Currency;
+                    existing.CashAccountType = incoming.CashAccountType;
+                }
+                else
+                {
+                    connection.BankAccounts.Add(new BankAccount
+                    {
+                        Id                 = Guid.NewGuid(),
+                        BankConnectionId   = connection.Id,
+                        Uid                = incoming.Uid,
+                        IdentificationHash = incoming.IdentificationHash,
+                        Name               = incoming.Name,
+                        Currency           = incoming.Currency,
+                        CashAccountType    = incoming.CashAccountType,
+                        CreatedAt          = DateTime.UtcNow
+                    });
+                }
+            }
+
+            await _connections.UpdateAsync(connection);
+        }
+        else
+        {
+            // CREATE path — brand-new bank
+            var connectionId = Guid.NewGuid();
+            connection = new BankConnection
+            {
+                Id           = connectionId,
+                UserId       = userId,
+                SessionId    = session.SessionId,
+                AspspName    = session.Aspsp.Name,
+                AspspCountry = session.Aspsp.Country,
+                PsuType      = session.PsuType,
+                ValidUntil   = DateTime.SpecifyKind(session.Access.ValidUntil, DateTimeKind.Utc),
+                Status       = "AUTHORIZED",
+                CreatedAt    = DateTime.UtcNow,
+                BankAccounts = session.Accounts.Select(a => new BankAccount
+                {
+                    Id                 = Guid.NewGuid(),
+                    BankConnectionId   = connectionId,
+                    Uid                = a.Uid,
+                    IdentificationHash = a.IdentificationHash,
+                    Name               = a.Name,
+                    Currency           = a.Currency,
+                    CashAccountType    = a.CashAccountType,
+                    CreatedAt          = DateTime.UtcNow
+                }).ToList()
+            };
+
+            await _connections.CreateAsync(connection);
+        }
+
         return ToDto(connection);
     }
 
@@ -67,13 +127,14 @@ public class BankConnectionService : IBankConnectionService
         return connections.Select(ToDto);
     }
 
-    public async Task<bool> DeleteConnectionAsync(Guid id)
+    // Ownership check added — only the owner can disconnect.
+    public async Task<bool> DeleteConnectionAsync(Guid userId, Guid id)
     {
         var connection = await _connections.GetByIdAsync(id);
-        if (connection == null)
+        if (connection == null || connection.UserId != userId)
             return false;
 
-        await _connections.DeleteAsync(connection);
+        await _connections.DeleteAsync(connection); // soft-delete (Status = "DISCONNECTED")
         return true;
     }
 

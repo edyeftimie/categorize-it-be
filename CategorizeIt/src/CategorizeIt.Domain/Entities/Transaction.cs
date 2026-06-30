@@ -7,7 +7,7 @@ public class Transaction
     public Guid? BankAccountId { get; set; }
     public string? EntryReference { get; set; }
     public decimal Amount { get; set; }
-    public string Currency { get; set; }
+    public string Currency { get; set; } = "RON";
     public bool IsExpense { get; set; }
     public DateTime BookingDate { get; set; }
     public string? MerchantName { get; set; }
