@@ -29,7 +29,8 @@ public class EnableBankingClient : IEnableBankingClient
         _settings = settings.Value;
 
         var rsa = RSA.Create();
-        rsa.ImportFromPem(_settings.PrivateKey);
+        var pem = _settings.PrivateKey.Replace("\\n", "\n");
+        rsa.ImportFromPem(pem);
         _signingKey = new RsaSecurityKey(rsa) { KeyId = _settings.ApplicationId };
     }
 

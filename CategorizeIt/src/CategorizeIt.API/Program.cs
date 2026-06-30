@@ -58,7 +58,6 @@ builder.Services.AddScoped<IBankConnectionService, BankConnectionService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-// builder.Services.AddSwaggerGen();
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo { Title = "CategorizeIt.API", Version = "v1" });
@@ -91,25 +90,28 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
+// Apply pending EF Core migrations on startup — creates the schema on a fresh
+// (e.g. cloud) database automatically, so no manual migration step is needed.
+using (var scope = app.Services.CreateScope())
 {
-    // app.UseSwagger();
-    app.UseSwagger(options =>
-    {
-        options.SerializeAsV2 = false;
-    });
-    // app.UseSwaggerUI();
-    app.UseSwaggerUI(options =>
-    {
-        options.SwaggerEndpoint("/swagger/v1/swagger.json", "CategorizeIt.API v1");
-    });
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    db.Database.Migrate();
 }
 
-// app.UseHttpsRedirection();
-if (!app.Environment.IsDevelopment())
+// Swagger enabled in all environments so the deployed API can be tested in the browser.
+// (If you'd rather keep it local-only, wrap these in: if (app.Environment.IsDevelopment()) { ... })
+app.UseSwagger(options =>
 {
-    app.UseHttpsRedirection();
-}
+    options.SerializeAsV2 = false;
+});
+app.UseSwaggerUI(options =>
+{
+    options.SwaggerEndpoint("/swagger/v1/swagger.json", "CategorizeIt.API v1");
+});
+
+// No UseHttpsRedirection: Render (and most container hosts) terminate TLS at their
+// proxy and forward plain HTTP to the container. Forcing an HTTPS redirect here would
+// break those proxied requests. The public Render URL is still HTTPS.
 
 app.UseAuthentication();
 app.UseAuthorization();
